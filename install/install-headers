@@ -1,0 +1,29 @@
+#!/usr/bin/ruby 
+
+require 'ftools'
+
+path = '/usr/local/include/sthread'
+user = ENV['USER']
+Dir.chdir("..")
+root = Dir.pwd
+
+#remove temps from include/
+Dir.chdir("#{root}/include")
+system("rm -f *~")
+if user == "root"
+  #create dirs if they don't exist
+  File.makedirs path 
+  Dir.chdir(path)
+  #remove the current set of files
+  Dir.foreach('./') { |x|
+    if(x!='.' and x!='..')
+      File.delete("#{x}")
+    end
+  }
+  Dir.chdir(path)
+  path = "#{root}/include"
+  #create symlinks
+  system("ln -fs #{path}/* .")
+else
+  puts "ERROR: root access required for installation" 
+end
