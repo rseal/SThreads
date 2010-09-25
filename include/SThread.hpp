@@ -22,19 +22,31 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sthread/Lock.hpp>
+#include <map>
 
 namespace sthread{
-   enum{ usec, msec, sec};
+   enum { nsec, usec, msec, sec};
+   const static long ONE_E0=1L;
+   const static long ONE_E3=1000L;
+   const static long ONE_E6=1000000L;
+   const static long ONE_E9=1000000000L;
 };
 
 class SThread
 {
+   std::map< long, double > unitMap_;
+
    public:
 
       SThread() {  
          pthread_mutex_init(&mutex_,NULL);
          pthread_attr_init(&attr_);
          pthread_cond_init(&condition_, NULL);
+
+         unitMap_[ sthread::nsec ] = sthread::ONE_E9;
+         unitMap_[ sthread::usec ] = sthread::ONE_E6;
+         unitMap_[ sthread::msec ] = sthread::ONE_E3;
+         unitMap_[ sthread::sec  ] = sthread::ONE_E0;
       }
 
       virtual ~SThread(){
@@ -79,41 +91,24 @@ class SThread
 
       void Wake(){ pthread_cond_signal(&condition_);}
 
-      void Sleep(int type = sthread::usec, long value = 1000L){
-         int status=0;
+      void Sleep ( int type = sthread::usec, long value = sthread::ONE_E3 ) {
 
-         clock_gettime(CLOCK_REALTIME , &cTime_);
+         double time = value;
+         double multiplier = unitMap_.find( type )->second;
 
-         switch(type){
-            case sthread::usec:
-               fTime_ = cTime_;
-               fTime_.tv_nsec += 1000L*value;
-               break;
-            case sthread::msec:
-               fTime_ = cTime_;
-               fTime_.tv_nsec += value*1000000L;
-               break;
-            case sthread::sec:
-               fTime_ = cTime_;
-               fTime_.tv_sec = cTime_.tv_sec + value;
-               break;
-            default:
-               std::cerr << "STHREAD: invalid sleep value. default to 1 sec" << std::endl;
-               fTime_ = cTime_;
-               fTime_.tv_sec += 1;
+         fTime_.tv_sec = 0;
+         fTime_.tv_nsec = 0;
+
+         while( time >= multiplier ){ 
+            time -= multiplier;
+            fTime_.tv_sec += 1;
          }
 
-         //hack to fix overflow problem
-         if(fTime_.tv_nsec > 1000000000L){
-            fTime_.tv_nsec -= 1000000000L;
-            fTime_.tv_sec++;
-         }
+         fTime_.tv_nsec = time*multiplier;
 
-         ScopedPThreadLock Lock(mutex_);
-         while(status != ETIMEDOUT){
-            status  = pthread_cond_timedwait(&condition_, &mutex_, &fTime_);
-         }
-      }  
+         ScopedPThreadLock lock ( mutex_ );
+         nanosleep(&fTime_, NULL);
+      }
 
       void Priority(int _value);
       void SetCondition(int _value);
