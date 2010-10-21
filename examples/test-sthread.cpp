@@ -36,7 +36,7 @@ class Test : public SThread {
          cout << num_ ;
          cout.flush();
          mutex_.Unlock();
-         this->Sleep(sthread::usec, 10);
+         this->Sleep(sthread::usec, 100000);
       }
    }
 
@@ -64,7 +64,8 @@ int main(int argc, char** argv)
       cin >> input;
       //when user wants to stop, set exit_=true and jump out of each thread's Run() member
       if(input[0] == 'q'){ 
-      test1.Exit(); test2.Exit(); 
+      test1.Exit(); 
+      test2.Exit(); 
       break;
       }
    }

@@ -104,7 +104,7 @@ class SThread
             fTime_.tv_sec += 1;
          }
 
-         fTime_.tv_nsec = time*multiplier;
+         fTime_.tv_nsec = sthread::ONE_E9*time/multiplier;
 
          ScopedPThreadLock lock ( mutex_ );
          nanosleep(&fTime_, NULL);
